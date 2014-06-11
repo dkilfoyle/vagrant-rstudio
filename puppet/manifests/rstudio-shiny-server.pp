@@ -14,6 +14,10 @@ $getrstudio = "wget -nc https://s3.amazonaws.com/rstudio-dailybuilds/${rstudiose
 $shinyserver = 'shiny-server-1.1.0.10000-amd64.deb'
 $getshiny = "wget -nc http://download3.rstudio.org/ubuntu-12.04/x86_64/${shinyserver}"
 
+# For building shiny server from source, we need a recent cmake
+$cmakeversion = '2.8.11.2'
+$cmakeurl = 'http://www.cmake.org/files/v2.8/'
+
 
 # Update system for r install
 class update_system {   
@@ -23,8 +27,8 @@ class update_system {
     }
     ->
     package {['software-properties-common','libapparmor1',
-              'python-software-properties', 
-              'upstart','dbus-x11', # required for init-checkconf
+              'python-software-properties', "git",
+              'upstart','dbus-x11', # required for init-checkconf testing
               'python', 'g++', 'make','vim', 'whois','mc','libcairo2-dev',
               'default-jdk', 'gdebi-core', 'libcurl4-gnutls-dev']:
       ensure  => present,
@@ -51,6 +55,8 @@ class update_system {
 }
 
 
+
+
 # Install r base and packages
 class install_r {
     package {['r-base', 'r-base-dev']:
@@ -65,19 +71,7 @@ class install_r {
     }
 }
 
-# Download and install shiny server and add users
-class install_shiny_server {
-
-    # Download shiny server
-    exec {'shiny-server-download':
-        provider => shell,
-        require  => [Exec['install-r-packages'],
-                    Package['software-properties-common',
-                    'python-software-properties', 'g++']],
-        command  => $getshiny,
-        unless => "test -f ${shinyserver}",
-    }
-    ->    
+class prepare_shiny{
     # Create rstudio_users group
     group {'rstudio_users':
         ensure => present,
@@ -92,6 +86,26 @@ class install_shiny_server {
         name    => 'shiny',
         home    => '/srv/shiny-server',
     }   
+   # Setting password during user creation does not work    
+   # Password shiny is public; this is for local use only
+   exec {'shinypassword':
+        provider => shell,
+        command => 'usermod -p `mkpasswd -H md5 shiny` shiny',
+     }
+}
+
+# Download and install shiny server and add users
+class install_shiny_server {
+
+    # Download shiny server
+    exec {'shiny-server-download':
+        provider => shell,
+        require  => [Exec['install-r-packages'],
+                    Package['software-properties-common',
+                    'python-software-properties', 'g++']],
+        command  => $getshiny,
+        unless => "test -f ${shinyserver}",
+    }
     ->
     # Install shiny server
     exec {'shiny-server-install':
@@ -107,17 +121,47 @@ class install_shiny_server {
         recurse => true,
     }   
     ->
-   # Setting password during user creation does not work    
-   # Password shiny is public; this is for local use only
-   exec {'shinypassword':
-        provider => shell,
-        command => 'usermod -p `mkpasswd -H md5 shiny` shiny',
-     }
-    ->
     # Remove standard app
     file {'/srv/shiny-server/index.html':
         ensure => absent,
     } 
+}
+
+class build_shiny_server{
+    # Adapted from RStudio/shiny
+    # https://github.com/rstudio/shiny-server/tree/75612b466a9ea02d9ae62fc581230a81b8be1631/vagrant
+    exec{'get-cmake':
+        provider => shell,
+        command => "wget ${cmakeurl}cmake-${cmakeversion}.tar.gz;",
+        unless => "test -f cmake-${cmakeversion}.tar.gz",
+    } 
+    ->    
+    exec{'tar-cmake':
+        provider => shell,
+        command => "tar xzf  cmake-${cmakeversion}.tar.gz;",
+        unless => "test -d cmake-${cmakeversion}",
+    }        
+    ->
+    exec{'make-cmake':
+        provider => shell,
+        command  => 
+        "cd cmake-${cmakeversion};
+        ./configure;
+        make;
+        make install;",
+        unless  => '[ "$(cmake --version)" = "cmake version ${cmakeversion}" ]',
+    }
+    ->
+    exec{'clone-git':
+        provider  => shell,
+        timeout   => 1800,
+        command   => 
+        'git clone https://github.com/rstudio/shiny-server.git;
+        cd shiny-server;
+        git remote add trestle https://github.com/trestletech/shiny-server.git;
+        ./packaging/make-package.sh',
+        unless => 'test -f /vagrant/shiny-server/bin/shiny-server',
+    }
 }
 
 # install rstudio and start service
@@ -135,6 +179,8 @@ class install_rstudio_server {
         command  => "gdebi -n ${rstudioserver}",
     }
 }
+
+
 
 # Make sure that both services are running
 class check_services{
@@ -167,8 +213,9 @@ class startupscript{
 
 include update_system
 include install_r
-include install_shiny_server
-include install_shiny_server
+include build_shiny_server
+include prepare_shiny
+#include install_shiny_server
 include install_rstudio_server
 include check_services
 include startupscript
