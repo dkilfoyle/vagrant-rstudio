@@ -1,6 +1,6 @@
 options("repos"="http://cran.rstudio.com") # set the cran mirror
 
-packages = c("devtools","ggplot2","plyr","reshape2","RcppEigen", "stringr","gridExtra",
+packages = c("devtools","ggplot2","dplyr","tidyr","RcppEigen", "stringr","gridExtra",
              "RCurl","RJSONIO","RJDBC","knitr","lme4","latticeExtra","RMySQL",
              "XLConnect","Cairo","opencpu","rstudio")
 packages = setdiff(packages, installed.packages()[,"Package"])
