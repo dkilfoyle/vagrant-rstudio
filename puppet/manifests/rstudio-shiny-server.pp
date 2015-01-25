@@ -1,4 +1,5 @@
 include wget
+install webmin
 # Installs RStudio (user shiny, password shiny) and Shiny
 # Change these if the version changes
 # See http://www.rstudio.com/ide/download/server
