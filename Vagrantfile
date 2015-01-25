@@ -26,6 +26,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     config.vm.network "forwarded_port", guest: 8787, host: 8787
     # OpenCPU
     config.vm.network "forwarded_port", guest: 80, host: 8080
+	# Webmin
+    config.vm.network "forwarded_port", guest: 10000, host: 10000
+	
 
     config.vm.synced_folder  "etc/rstudio", "/etc/rstudio", create:true
     config.vm.synced_folder  "etc/shiny-server", "/etc/shiny-server", create:true
