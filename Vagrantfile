@@ -4,6 +4,11 @@
 # Vagrantfile API/syntax version. Don't touch unless you know what you're doing!
 VAGRANTFILE_API_VERSION = "2"
 
+$script = <<SCRIPT
+echo Loading Puppet modules
+puppet module install panaman-webmin
+SCRIPT
+
 # There is a major issue with synced folders in Virtual Box 4.3.10.
 # DO NOT USE THIS version
 # http://stackoverflow.com/questions/22717428/vagrant-error-failed-to-mount-folders-in-linux-guest
@@ -37,6 +42,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     config.vm.hostname = "vagrant.example.com"
 
    # Provisioning
+  config.vm.provision "shell", inline: $script
+
     config.vm.provision :puppet,
 #    :options => ["--verbose", "--debug"] do |puppet|
 #    :options => ["--debug"] do |puppet|
