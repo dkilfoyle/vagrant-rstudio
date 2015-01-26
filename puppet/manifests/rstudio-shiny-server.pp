@@ -1,5 +1,5 @@
 include wget
-include webmin
+
 # Installs RStudio (user shiny, password shiny) and Shiny
 # Change these if the version changes
 # See http://www.rstudio.com/ide/download/server
@@ -193,8 +193,43 @@ class startupscript{
     }  
 }
 
+class webmin {
+    $base = "webmin_1.700_all.deb"
+    $url = "http://prdownloads.sourceforge.net/webadmin/"
+    $archive = "/root/$base"
+    $installed = "/etc/webmin/version"
 
+    $dependencies = [
+        "libapt-pkg-perl",
+        "libnet-ssleay-perl",
+        "libauthen-pam-perl",
+        "libio-pty-perl",
+        "apt-show-versions",
+    ]
 
+    package{$dependencies: ensure => installed}->
+    exec { "DownloadWebmin":
+        cwd     => "/root",
+        command => "/usr/bin/wget $url$base",
+        creates => $archive,
+    }
+
+    exec { "InstallWebmin":
+        cwd     => "/root",
+        command => "/usr/bin/dpkg -i $archive",
+        creates => $installed,
+        require => Exec["DownloadWebmin"],
+        notify  => Service[webmin],
+    }
+
+    service { webmin:
+        ensure   => running,
+        require  => Exec["InstallWebmin"],
+        provider => init;
+    }
+}
+
+include webmin
 include update_system
 include install_r
 include install_opencpu

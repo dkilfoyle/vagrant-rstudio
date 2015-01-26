@@ -6,7 +6,7 @@ VAGRANTFILE_API_VERSION = "2"
 
 $script = <<SCRIPT
 echo Loading Puppet modules
-puppet module install panaman-webmin
+puppet module install maestrodev-wget --modulepath /usr/share/puppet/modules
 SCRIPT
 
 # There is a major issue with synced folders in Virtual Box 4.3.10.
@@ -42,7 +42,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     config.vm.hostname = "vagrant.example.com"
 
    # Provisioning
-  config.vm.provision "shell", inline: $script
+   config.vm.provision "shell", inline: $script
 
     config.vm.provision :puppet,
 #    :options => ["--verbose", "--debug"] do |puppet|
@@ -50,7 +50,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
      :options => [] do |puppet|
         puppet.manifests_path = "puppet/manifests"
         puppet.manifest_file = "rstudio-shiny-server.pp"
-        puppet.module_path = "puppet/modules"
+#        puppet.module_path = "puppet/modules"
 
     end
 
